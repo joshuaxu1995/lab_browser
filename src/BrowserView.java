@@ -1,9 +1,11 @@
 import java.awt.Dimension;
 import java.net.URL;
+import java.util.*;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Worker;
 import javafx.concurrent.Worker.State;
 import javafx.event.ActionEvent;
@@ -23,6 +25,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
+import resources.BrowserException;
+
 import javax.imageio.ImageIO;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -61,6 +65,7 @@ public class BrowserView {
     private Button myBackButton;
     private Button myNextButton;
     private Button myHomeButton;
+    private Button setFavorite;
     // favorites
     private ComboBox<String> myFavorites;
     // get strings from resource file
@@ -91,13 +96,13 @@ public class BrowserView {
      * Display given URL.
      */
     public void showPage (String url) {
-        URL valid = myModel.go(url);
-        if (valid != null) {
-            update(valid);
-        }
-        else {
-            showError("Could not load " + url);
-        }
+    	try {
+    		URL valid = myModel.go(url);
+    		update(valid);
+    	}
+    	catch (BrowserException e){
+    		showError(e.getMessage());
+    	}
     }
 
     /**
@@ -131,7 +136,12 @@ public class BrowserView {
 
     // move to the previous URL in the history
     private void back () {
-        update(myModel.back());
+    	try {
+            update(myModel.back());
+    	}
+    	catch (BrowserException e){
+    		showError(e.getMessage());
+    	}
     }
 
     // change current URL to the home page, if set
@@ -143,10 +153,10 @@ public class BrowserView {
     private void showFavorite (String favorite) {
         showPage(myModel.getFavorite(favorite).toString());
         // reset favorites ComboBox so the same choice can be made again
-        myFavorites.setValue(null);
+        //myFavorites.setValue(null);
     }
 
-    // update just the view to display given URL
+    // update just the view to dispdlay given URL
     private void update (URL url) {
         String urlText = url.toString();
         myPage.getEngine().load(urlText);
@@ -225,11 +235,31 @@ public class BrowserView {
     private Node makePreferencesPanel () {
         HBox result = new HBox();
         myFavorites = new ComboBox<String>();
-        // ADD REST OF CODE HERE
+        for (String s: myModel.getFavorites())
+        {
+        	myFavorites.getItems().add(s);
+        }
         result.getChildren().add(makeButton("SetHomeCommand", event -> {
             myModel.setHome();
             enableButtons();
         }));
+        myFavorites.valueProperty().addListener(new ChangeListener<String>(){
+        	@Override
+        	public void changed(ObservableValue ov, String t, String t1){
+        		System.out.println(ov.getValue().toString());
+        		showFavorite(ov.getValue().toString());
+        	}
+        });
+        
+        setFavorite = makeButton("FavoritePromptTitle", new EventHandler<ActionEvent>() {
+            @Override      
+            public void handle (ActionEvent event) {       
+                 addFavorite();
+            }      
+        });
+        result.getChildren().add(myFavorites);
+        result.getChildren().add(setFavorite);
+        
         return result;
     }
 
@@ -241,6 +271,7 @@ public class BrowserView {
 
         Button result = new Button();
         String label = myResources.getString(property);
+        System.out.println(property);
         if (label.matches(IMAGEFILE_SUFFIXES)) {
             result.setGraphic(new ImageView(
                 new Image(getClass().getResourceAsStream(DEFAULT_RESOURCE_PACKAGE + label))));

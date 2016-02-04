@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ResourceBundle;
+import java.util.Set;
+
+import resources.BrowserException;
 
 
 /**
@@ -16,6 +20,8 @@ public class BrowserModel {
     // constants
     public static final String PROTOCOL_PREFIX = "http://";
     // state
+    public static final String DEFAULT_RESOURCE_PACKAGE = "resources/";
+    private ResourceBundle myResources;
     private URL myHome;
     private URL myCurrentURL;
     private int myCurrentIndex;
@@ -26,12 +32,13 @@ public class BrowserModel {
     /**
      * Creates an empty model.
      */
-    public BrowserModel () {
+    public BrowserModel (String language) {
         myHome = null;
         myCurrentURL = null;
         myCurrentIndex = -1;
         myHistory = new ArrayList<>();
         myFavorites = new HashMap<>();
+        myResources = ResourceBundle.getBundle(DEFAULT_RESOURCE_PACKAGE + language);
     }
 
     /**
@@ -47,19 +54,21 @@ public class BrowserModel {
 
     /**
      * Returns the first page in back history, null if back history is empty.
+     * @throws BrowserException 
      */
-    public URL back () {
+    public URL back () throws BrowserException {
         if (hasPrevious()) {
             myCurrentIndex--;
             return myHistory.get(myCurrentIndex);
         }
-        return null;
+        throw new BrowserException(myResources.getString("ErrorOnGo"));
     }
 
     /**
      * Changes current page to given URL, removing next history.
+     * @throws BrowserException 
      */
-    public URL go (String url) {
+    public URL go (String url) throws BrowserException {
         try {
             URL tmp = completeURL(url);
             // unfortunately, completeURL may not have returned a valid URL, so test it
@@ -76,7 +85,7 @@ public class BrowserModel {
             return myCurrentURL;
         }
         catch (Exception e) {
-            return null;
+            throw new BrowserException(myResources.getString("ErrorOnGo"));
         }
     }
 
@@ -120,7 +129,11 @@ public class BrowserModel {
             myFavorites.put(name, myCurrentURL);
         }
     }
-
+    
+    public Set<String> getFavorites() {
+    	return myFavorites.keySet();
+    }
+    
     /**
      * Returns URL from favorites associated with given name, null if none set.
      */
